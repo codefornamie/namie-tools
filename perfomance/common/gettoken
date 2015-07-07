@@ -1,0 +1,35 @@
+#!/bin/sh
+usage () {
+	echo "usage: $0 <user> <passwd>" 1>&2
+	echo "       or set env USER and PASSWD" 1>&2
+	exit 1
+}
+
+#echo "devel-20141114"
+
+if [ $# -eq 2 ]; then
+	user="$1"
+	passwd="$2"
+elif [ $# -eq 0 ]; then
+	user="$USER"
+	passwd="$PASSWD"
+else
+	usage
+fi
+if [ -z "$user" -o -z "$passwd" ]; then
+	usage
+fi
+
+token=`curl -X POST "$BASE_URL/$CELL/__auth" -d "grant_type=password&username=$user&password=$passwd" \
+-H "Content-Type: application/x-www-form-urlencoded" \
+-H "Accept:application/json" -i -k -s | tail -1 | \
+sed -e 's/^.*"access_token":"\([^\"]*\)\".*$/\1/'`
+
+if [[ "$token" =~ "error" ]]; then
+	echo $token >&2
+	exit 1
+fi
+
+echo $token
+
+

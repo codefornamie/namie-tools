@@ -1,0 +1,98 @@
+#!/bin/sh
+
+PGHOME=`dirname $0`
+PGNAME=`basename $0`
+
+usage () {
+	exit 1
+}
+
+while [ "`printf "%s" "$1" | sed -e 's/^\(.\).*$/\1/'`" == "-" ];
+do
+    opt=$1
+    case "$opt" in
+    -t)
+        shift
+        TOKEN="$1"
+        ;;
+    -u)
+        shift
+        BASE_URL="$1"
+        ;;
+    -c)
+        shift
+        CELL="$1"
+        ;;
+    -b)
+        shift
+        BOX="$1"
+        ;;
+    -p)
+        shift
+        path="$1"
+        ;;
+    *)
+	echo "$PGNAME: invalid option: $opt" 1>&2
+	usage
+	;;
+    esac
+
+    shift
+done
+
+if [ $# -ne 1 ]; then
+	echo "$PGNAME: requires file" 1>&2
+	exit 1
+fi
+file=$1
+if [ \! -f "$file" ]; then
+	echo "$PGNAME: no such file: $file" 1>&2
+	exit 1
+fi
+
+if [ -z "$TOKEN" ]; then
+	TOKEN="`gettoken`"
+	echo "$PGNAME: requires -t option" 1>&2
+	exit 1
+fi
+
+if [ -z "$BASE_URL" ]; then
+	echo "$PGNAME: requires -u option" 1>&2
+	exit 1
+fi
+
+if [ -z "$CELL" ]; then
+	echo "$PGNAME: requires -c option" 1>&2
+	exit 1
+fi
+
+if [ -z "$BOX" ]; then
+	echo "$PGNAME: requires -b option" 1>&2
+	exit 1
+fi
+
+if [ -z "$path" ]; then
+	echo "$PGNAME: requires -p option" 1>&2
+	exit 1
+fi
+
+IFS="/"
+set -- $path
+nt=$#
+while [ $nt -gt 1 ];
+do
+	p=$p/$1
+	curl -X MKCOL "$BASE_URL/$CELL/$BOX/dav$p" \
+	-H "Authorization:Bearer ${TOKEN}" -i -k -s > /dev/null
+	nt=`expr $nt - 1`
+	shift
+done
+IFS=""
+
+URL="$BASE_URL/$CELL/$BOX/dav/$path"
+curl -X PUT "$URL" --data-binary "@$file" \
+-H "Content-Type: image/jpeg" \
+-H "Authorization:Bearer ${TOKEN}" \
+-H "Accept:application/json" \
+-i -k -s | curlstat
+

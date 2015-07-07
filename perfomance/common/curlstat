@@ -1,0 +1,32 @@
+#!/bin/sh
+
+read line
+if [[ "$line" =~ HTTP/[0-9.]*\ 200\ Connection\ established ]]; then
+	read line
+	read line
+fi
+if [[ "$line" =~ HTTP/[0-9.]*\ 100 ]]; then
+	read line
+	read line
+fi
+HTTP_MESSAGE="$line"
+HTTP_STAT=`echo "$line" | sed -e 's/^HTTP\/[0-9.]* \([0-9]*\) .*$/\1/'`
+while read line
+do
+	if [[ "$line" =~ ^.$ ]]; then
+		break;
+	fi
+done
+
+if [[ "$HTTP_STAT" =~ ^2 ]]; then
+	res=ok
+fi
+
+
+if [ "$res" = "ok" ]; then
+	cat
+	exit 0
+else
+	printf "%s %s\n" "$HTTP_MESSAGE" "`cat`" 1>&2
+	exit 1
+fi

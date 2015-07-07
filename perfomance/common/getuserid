@@ -1,0 +1,41 @@
+#!/bin/sh
+PGNAME="`basename $0`"
+
+if [ $# -ne 1 -a $# -ne 2 ]; then
+        echo "usage: $PGNAME [-c] userid" 1>&2
+	echo "-c: no personal when create" 1>&2
+        exit
+fi
+if [ "$1" = "-c" ]; then
+	OPT="$1"
+	TARGET=$2
+else
+	TARGET=$1
+fi
+
+TOKEN=`gettoken`
+
+USERID=`curl -X GET \
+"$BASE_URL/$CELL/data/odata/personal?\\\$select=_id,loginId&\\\$filter=loginId%20eq%20%27${TARGET}%27" \
+-H "Accept:application/json" \
+-H "Authorization:Bearer $TOKEN" -i -k -s | tail -1 | \
+sed -e 's/^.*"__id":"\([^\"]*\)\".*$/\1/'`
+
+if [[ "$USERID" =~ "result" ]]; then
+	USERID=""
+fi
+
+if [ "$OPT" = "-c" -a -z "$USERID" ]; then
+    USERID="userid_$TARGET"
+    postdata -e personal -d '{
+"__id": "'$USERID'",
+"createdAt": "'$now'",
+"updatedAt": "'$now'",
+"deletedAt": null,
+"fontSize": "middle",
+"loginId": "'$TARGET'",
+"showLastPublished": null
+    }'
+fi
+
+echo $USERID

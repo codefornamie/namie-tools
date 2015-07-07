@@ -1,0 +1,122 @@
+#!/bin/sh
+
+PGHOME=`dirname $0`
+PGNAME=`basename $0`
+
+usage () {
+	echo OPTIONS..
+	echo "-s lunch server"
+	echo "-r <mode> grunt & cordova run"
+	echo "-c <mode> only cordova run"
+	echo "-g only grunt"
+	echo "-m <mode> change mode to appConfig.js"
+        echo "-f --force option for -g -r"
+        echo "-init make symbolic link, bower install, and npm install"
+}
+
+curlstat () {
+    read line
+    if [[ "$line" =~ HTTP/[0-9.]*\ 200\ Connection\ established ]]; then
+        read line
+        read line
+    fi
+    HTTP_MESSAGE="$line"
+    HTTP_STAT=`echo "$line" | sed -e 's/^HTTP\/[0-9.]* \([0-9]*\) .*$/\1/'`
+    while read line
+    do
+        if [[ "$line" =~ ^.$ ]]; then
+            break;
+        fi
+    done
+
+    while read line
+    do
+        echo "$line"
+    done
+
+    if [[ "$HTTP_STAT" =~ ^2 ]]; then
+        exit 0
+    else
+        echo $HTTP_MESSAGE 1>&2
+        exit 1
+    fi
+}
+
+while [ "`printf "%s" "$1" | sed -e 's/^\(.\).*$/\1/'`" == "-" ];
+do
+    opt=$1
+    case "$opt" in
+    -t)
+        shift
+        TOKEN="$1"
+        ;;
+    -u)
+        shift
+        BASE_URL="$1"
+        ;;
+    -c)
+        shift
+        CELL="$1"
+        ;;
+    -b)
+        shift
+        BOX="$1"
+        ;;
+    -e)
+        shift
+        entity="$1"
+        ;;
+    -i)
+        shift
+        id="$1"
+        ;;
+    -d)
+        shift
+        data="$1"
+        ;;
+    *)
+	usage
+	;;
+    esac
+
+    shift
+done
+
+if [ -z "$TOKEN" ]; then
+	TOKEN="`gettoken`"
+	echo "$PGNAME: requires -t option" 1>&2
+	exit 1
+fi
+
+if [ -z "$entity" ]; then
+	echo "$PGNAME: requires -e option" 1>&2
+	exit 1
+fi
+
+if [ -z "$BASE_URL" ]; then
+	echo "$PGNAME: requires -u option" 1>&2
+	exit 1
+fi
+
+if [ -z "$CELL" ]; then
+	echo "$PGNAME: requires -c option" 1>&2
+	exit 1
+fi
+
+if [ -z "$BOX" ]; then
+	echo "$PGNAME: requires -b option" 1>&2
+	exit 1
+fi
+
+if [ -z "$data" ]; then
+	echo "$PGNAME: requires -d option" 1>&2
+	exit 1
+fi
+
+URL="$BASE_URL/$CELL/$BOX/odata/$entity"
+
+curl -X POST "$URL" -d "$data" \
+-H "Authorization:Bearer ${TOKEN}" \
+-H "Accept:application/json" \
+-i -k -s | curlstat
+

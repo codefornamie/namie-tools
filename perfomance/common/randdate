@@ -1,0 +1,21 @@
+#!/bin/sh
+
+if [ $# -ne 1 -a $# -ne 2 ]; then
+	echo "usage: $0 <range(day)> [<offset(day)>]" 1>&2
+	exit
+fi
+
+range=$1
+if [ $# -eq 2 ]; then
+	offset=$2
+else
+	offset=-$1
+fi
+
+rd=`printf "%+d" "\`expr $((RANDOM)) \* $range / 32768 + $offset\`"`
+
+sdate=`date -v${rd}d "+%Y%m%d"`
+
+rm=`expr $((RANDOM)) \* 86400 / 32768`
+
+date -v+${rm}S -j -f %Y%m%d%H%M%S ${sdate}000000 "+%Y-%m-%dT%H:%M:%S+0900"
